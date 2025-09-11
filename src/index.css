@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Core colors - Ocean & Journey theme */
+    --background: 0 0% 100%;
+    --foreground: 200 24% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 24% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 24% 10%;
+
+    /* Primary - Deep ocean blue */
+    --primary: 200 95% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Soft teal */
+    --secondary: 180 42% 94%;
+    --secondary-foreground: 200 24% 10%;
+
+    --muted: 200 12% 95%;
+    --muted-foreground: 200 12% 45%;
+
+    /* Accent - Warm sunset orange */
+    --accent: 20 90% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 90%;
+    --input: 200 20% 90%;
+    --ring: 200 95% 39%;
+
+    --radius: 0.75rem;
+
+    /* Custom design tokens */
+    --gradient-sky: linear-gradient(135deg, hsl(200 100% 70%), hsl(220 100% 60%));
+    --gradient-sunset: linear-gradient(135deg, hsl(20 90% 48%), hsl(340 82% 52%));
+    --gradient-ocean: linear-gradient(180deg, hsl(200 95% 39%), hsl(200 100% 20%));
+    --gradient-dawn: linear-gradient(135deg, hsl(280 70% 75%), hsl(20 90% 65%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100% / 0.9), hsl(200 50% 98% / 0.7));
+    
+    --shadow-soft: 0 2px 8px hsl(200 50% 20% / 0.08);
+    --shadow-medium: 0 4px 16px hsl(200 50% 20% / 0.12);
+    --shadow-card: 0 1px 3px hsl(200 50% 20% / 0.1), 0 1px 2px hsl(200 50% 20% / 0.06);
+    --shadow-glow: 0 0 24px hsl(200 95% 39% / 0.2);
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Travel mode colors */
+    --mode-walk: 120 60% 50%;
+    --mode-car: 220 70% 50%;
+    --mode-bus: 40 90% 50%;
+    --mode-train: 280 70% 50%;
+    --mode-bike: 160 60% 45%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 200 24% 10%;
+    --sidebar-primary: 200 95% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 30% 96%;
+    --sidebar-accent-foreground: 200 24% 10%;
+    --sidebar-border: 200 20% 90%;
+    --sidebar-ring: 200 95% 39%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
