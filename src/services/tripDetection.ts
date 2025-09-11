@@ -1,6 +1,22 @@
 import { Trip } from "@/types/trip";
 import { supabase } from "@/integrations/supabase/client";
 
+interface AccelerometerData {
+  x: number;
+  y: number;
+  z: number;
+  timestamp: number;
+}
+
+interface MotionData {
+  acceleration: AccelerometerData;
+  rotationRate: {
+    alpha: number;
+    beta: number;
+    gamma: number;
+  };
+}
+
 export interface DetectedTrip {
   origin: { name: string; coordinates: { lat: number; lng: number } };
   destination: { name: string; coordinates: { lat: number; lng: number } };
@@ -16,6 +32,8 @@ interface TripDetectionState {
   currentTrip: Partial<DetectedTrip> | null;
   lastPosition: GeolocationPosition | null;
   watchId: number | null;
+  motionData: MotionData[];
+  isMotionPermissionGranted: boolean;
 }
 
 class TripDetectionService {
@@ -24,6 +42,8 @@ class TripDetectionService {
     currentTrip: null,
     lastPosition: null,
     watchId: null,
+    motionData: [],
+    isMotionPermissionGranted: false,
   };
 
   private callbacks: {
@@ -51,11 +71,14 @@ class TripDetectionService {
     if (this.state.isTracking) return;
 
     try {
-      // Request permission
-      const permission = await this.requestLocationPermission();
-      if (!permission) {
+      // Request location permission
+      const locationPermission = await this.requestLocationPermission();
+      if (!locationPermission) {
         throw new Error('Location permission denied');
       }
+
+      // Request motion permission (for accelerometer data)
+      await this.requestMotionPermission();
 
       this.state.isTracking = true;
       
@@ -66,7 +89,12 @@ class TripDetectionService {
         this.LOCATION_OPTIONS
       );
 
-      console.log('Trip detection started');
+      // Start motion data collection
+      if (this.state.isMotionPermissionGranted) {
+        this.startMotionDetection();
+      }
+
+      console.log('Trip detection started with GPS and motion sensors');
     } catch (error) {
       console.error('Failed to start trip detection:', error);
       throw error;
@@ -78,8 +106,13 @@ class TripDetectionService {
       navigator.geolocation.clearWatch(this.state.watchId);
       this.state.watchId = null;
     }
+    
+    // Stop motion detection
+    this.stopMotionDetection();
+    
     this.state.isTracking = false;
     this.state.currentTrip = null;
+    this.state.motionData = [];
     console.log('Trip detection stopped');
   }
 
@@ -223,17 +256,86 @@ class TripDetectionService {
   private detectTransportMode(path: { lat: number; lng: number; timestamp: number }[]): Trip['mode'] {
     if (path.length < 2) return 'other';
 
-    // Calculate average speed
+    // Calculate average speed from GPS
     const totalDistance = this.calculateTotalDistance(path) * 1000; // in meters
     const totalTime = (path[path.length - 1].timestamp - path[0].timestamp) / 1000; // in seconds
     const avgSpeed = (totalDistance / totalTime) * 3.6; // Convert to km/h
 
-    // Simple speed-based detection (can be improved with accelerometer data)
-    if (avgSpeed < 5) return 'walk';
-    if (avgSpeed < 15) return 'bike';
-    if (avgSpeed < 40) return 'bus';
-    if (avgSpeed < 80) return 'car';
+    // Analyze motion data for transport mode classification
+    const motionClassification = this.analyzeMotionPattern();
+    
+    // Combined decision based on speed and motion patterns
+    if (avgSpeed < 5) {
+      return motionClassification.isWalking ? 'walk' : 'other';
+    }
+    
+    if (avgSpeed < 15) {
+      return motionClassification.isCycling ? 'bike' : 'walk';
+    }
+    
+    if (avgSpeed < 40) {
+      // Check motion patterns to distinguish between bus and car
+      if (motionClassification.isVehicleWithStops) {
+        return 'bus';
+      }
+      return 'car';
+    }
+    
+    if (avgSpeed < 80) {
+      return motionClassification.isSmoothVehicle ? 'train' : 'car';
+    }
+    
     return 'train';
+  }
+
+  private analyzeMotionPattern(): {
+    isWalking: boolean;
+    isCycling: boolean;
+    isVehicleWithStops: boolean;
+    isSmoothVehicle: boolean;
+  } {
+    if (this.state.motionData.length < 10) {
+      // Not enough data, return neutral classification
+      return {
+        isWalking: false,
+        isCycling: false,
+        isVehicleWithStops: false,
+        isSmoothVehicle: false,
+      };
+    }
+
+    // Calculate motion characteristics
+    const accelerations = this.state.motionData.map(data => 
+      Math.sqrt(data.acceleration.x ** 2 + data.acceleration.y ** 2 + data.acceleration.z ** 2)
+    );
+    
+    const avgAcceleration = accelerations.reduce((a, b) => a + b, 0) / accelerations.length;
+    const accelerationVariance = this.calculateVariance(accelerations);
+    
+    // Walking: Regular rhythmic pattern, moderate acceleration variance
+    const isWalking = avgAcceleration > 1 && avgAcceleration < 3 && accelerationVariance > 0.5;
+    
+    // Cycling: Smoother than walking, lower acceleration variance
+    const isCycling = avgAcceleration > 0.5 && avgAcceleration < 2 && accelerationVariance < 0.3;
+    
+    // Vehicle with stops (bus): Variable acceleration with periods of high variance
+    const isVehicleWithStops = accelerationVariance > 1 && avgAcceleration > 0.8;
+    
+    // Smooth vehicle (train): Low acceleration variance, steady motion
+    const isSmoothVehicle = accelerationVariance < 0.2 && avgAcceleration < 1;
+
+    return {
+      isWalking,
+      isCycling,
+      isVehicleWithStops,
+      isSmoothVehicle,
+    };
+  }
+
+  private calculateVariance(values: number[]): number {
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
+    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
   }
 
   private async saveTripToDatabase(trip: DetectedTrip) {
@@ -318,6 +420,60 @@ class TripDetectionService {
       case error.TIMEOUT:
         console.error('Location request timed out');
         break;
+    }
+  }
+
+  private async requestMotionPermission(): Promise<void> {
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+        // iOS 13+ requires explicit permission
+        const permissionState = await (DeviceMotionEvent as any).requestPermission();
+        this.state.isMotionPermissionGranted = permissionState === 'granted';
+      } else if ('DeviceMotionEvent' in window) {
+        // Android and older iOS versions
+        this.state.isMotionPermissionGranted = true;
+      } else {
+        console.warn('Device motion not supported');
+        this.state.isMotionPermissionGranted = false;
+      }
+    } catch (error) {
+      console.warn('Motion permission request failed:', error);
+      this.state.isMotionPermissionGranted = false;
+    }
+  }
+
+  private startMotionDetection() {
+    if (!this.state.isMotionPermissionGranted) return;
+    
+    window.addEventListener('devicemotion', this.handleMotionData.bind(this));
+    console.log('Motion detection started');
+  }
+
+  private stopMotionDetection() {
+    window.removeEventListener('devicemotion', this.handleMotionData.bind(this));
+  }
+
+  private handleMotionData(event: DeviceMotionEvent) {
+    if (!event.acceleration) return;
+
+    const motionData: MotionData = {
+      acceleration: {
+        x: event.acceleration.x || 0,
+        y: event.acceleration.y || 0,
+        z: event.acceleration.z || 0,
+        timestamp: Date.now(),
+      },
+      rotationRate: {
+        alpha: event.rotationRate?.alpha || 0,
+        beta: event.rotationRate?.beta || 0,
+        gamma: event.rotationRate?.gamma || 0,
+      },
+    };
+
+    // Keep only last 50 motion readings (about 2-3 seconds of data)
+    this.state.motionData.push(motionData);
+    if (this.state.motionData.length > 50) {
+      this.state.motionData.shift();
     }
   }
 

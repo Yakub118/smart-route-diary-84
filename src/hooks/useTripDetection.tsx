@@ -9,6 +9,7 @@ export const useTripDetection = () => {
   const [currentLocation, setCurrentLocation] = useState<GeolocationPosition | null>(null);
   const [detectedTrip, setDetectedTrip] = useState<DetectedTrip | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [hasMotionSensors, setHasMotionSensors] = useState(false);
 
   useEffect(() => {
     // Set up callbacks
@@ -16,16 +17,23 @@ export const useTripDetection = () => {
       setDetectedTrip(trip);
       setShowConfirmation(true);
       
-      // Show notification
+      // Show enhanced notification
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Trip Detected! 🚗", {
-          body: `Trip from ${trip.origin.name} to ${trip.destination.name}`,
+        const notification = new Notification("🚗 Trip Detected!", {
+          body: `${trip.mode.charAt(0).toUpperCase() + trip.mode.slice(1)} trip from ${trip.origin.name} to ${trip.destination.name}\nDistance: ${trip.distance.toFixed(1)} km\nClick to confirm details.`,
           icon: "/favicon.ico",
+          requireInteraction: true,
         });
+        
+        notification.onclick = () => {
+          setShowConfirmation(true);
+          notification.close();
+        };
       } else {
         toast({
-          title: "Trip Detected! 🚗",
-          description: `Trip from ${trip.origin.name} to ${trip.destination.name}. Please confirm the details.`,
+          title: "🚗 Trip Detected!",
+          description: `${trip.mode.charAt(0).toUpperCase() + trip.mode.slice(1)} trip from ${trip.origin.name} to ${trip.destination.name}. Distance: ${trip.distance.toFixed(1)} km. Please confirm the details.`,
+          duration: 8000,
         });
       }
     });
@@ -33,6 +41,11 @@ export const useTripDetection = () => {
     tripDetectionService.onLocationUpdate((position) => {
       setCurrentLocation(position);
     });
+
+    // Check motion sensor availability
+    if ('DeviceMotionEvent' in window) {
+      setHasMotionSensors(true);
+    }
 
     // Check for auto-detection preference
     const autoDetectionEnabled = localStorage.getItem("autoDetectionEnabled");
@@ -102,6 +115,7 @@ export const useTripDetection = () => {
   return {
     isTracking,
     currentLocation,
+    hasMotionSensors,
     startTracking,
     stopTracking,
     confirmationModal: (

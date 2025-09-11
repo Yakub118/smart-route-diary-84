@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { MapPin, Clock, Route, Users, Briefcase, CheckCircle, X } from "lucide-react";
+import { MapPin, Clock, Route, Users, Briefcase, CheckCircle, X, Activity, Zap } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { DetectedTrip } from "@/services/tripDetection";
 import { TripPurpose, Companion, TransportMode } from "@/types/trip";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,8 +141,26 @@ const TripConfirmationModal = ({
               
               <div className="flex items-center gap-3">
                 <Route className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm">{detectedTrip.distance.toFixed(1)} km</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm">{detectedTrip.distance.toFixed(1)} km</p>
+                  <Badge variant="outline" className="text-xs">
+                    <Activity className="h-3 w-3 mr-1" />
+                    Auto-detected
+                  </Badge>
+                </div>
               </div>
+              
+              {detectedTrip.mode && (
+                <div className="flex items-center gap-3">
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm">Detected mode: {detectedTrip.mode.charAt(0).toUpperCase() + detectedTrip.mode.slice(1)}</p>
+                    <Badge variant="secondary" className="text-xs">
+                      AI Enhanced
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 

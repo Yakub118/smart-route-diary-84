@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { isTracking, currentLocation, startTracking, stopTracking, confirmationModal } = useTripDetection();
+  const { isTracking, currentLocation, hasMotionSensors, startTracking, stopTracking, confirmationModal } = useTripDetection();
   const [todayTrips, setTodayTrips] = useState<Trip[]>([]);
   const [weekStats, setWeekStats] = useState({
     totalDistance: 0,
@@ -180,6 +180,16 @@ const Home = () => {
             value={weekStats.totalTrips}
             icon={<Calendar className="h-5 w-5 text-accent" />}
             trend={{ value: 5, isPositive: true }}
+          />
+        </div>
+
+        {/* Trip Detection Toggle */}
+        <div className="mb-6">
+          <TripDetectionToggle
+            isTracking={isTracking}
+            onToggle={handleToggleTracking}
+            currentLocation={currentLocation}
+            hasMotionSensors={hasMotionSensors}
           />
         </div>
 
